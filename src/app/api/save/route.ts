@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import fetch from "node-fetch";
 import { Readable } from "stream";
 
 export const dynamic = "force-dynamic";
@@ -38,16 +37,17 @@ export async function POST(req: NextRequest) {
     oauth2.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
     const drive = google.drive({ version: "v3", auth: oauth2 });
 
-    /* carico nella cartella Reels */
+    // 4. carico nella cartella Reels
     const upload = await drive.files.create({
       requestBody: {
         name: filename,
-        parents: [process.env.GOOGLE_FOLDER_ID],
+        parents: [process.env.GOOGLE_FOLDER_ID as string], // <-- cast esplicito
       },
       media: {
         mimeType: "video/mp4",
-        body: Readable.from(Buffer.from(buffer)),
+        body: Buffer.from(buffer), // <-- Buffer anziché Readable
       },
+      fields: "id", // <-- opzionale ma chiarisce il tipo di risposta
     });
 
     return NextResponse.json({ ok: true, fileId: upload.data.id });
