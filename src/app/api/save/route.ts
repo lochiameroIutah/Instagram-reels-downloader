@@ -6,10 +6,14 @@ export const dynamic = "force-dynamic"; // evita il caching su Vercel
 
 export async function POST(req: NextRequest) {
   try {
-    /* 1. estraggo l’URL dal body */
+    /* 1. estraggo l'URL dal body */
     const { url } = await req.json();
     if (!url) {
-      return NextResponse.json({ error: "URL mancante" }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        error: "URL mancante",
+        message: "È necessario fornire l'URL del reel da salvare"
+      }, { status: 400 });
     }
 
     /* 2. chiedo al downloader il link diretto del video */
@@ -18,7 +22,11 @@ export async function POST(req: NextRequest) {
     );
     if (!metaRes.ok) {
       return NextResponse.json(
-        { error: "Downloader non disponibile" },
+        { 
+          success: false, 
+          error: "Downloader non disponibile",
+          message: "Il servizio di download non è raggiungibile. Riprova più tardi."
+        },
         { status: 502 }
       );
     }
@@ -27,7 +35,16 @@ export async function POST(req: NextRequest) {
     const filename = meta.data.filename ?? `reel_${Date.now()}.mp4`;
 
     /* 3. scarico il video in un Buffer e lo trasformo in stream */
-    const buffer = await fetch(fileUrl).then((r) => r.arrayBuffer());
+    const videoResponse = await fetch(fileUrl);
+    if (!videoResponse.ok) {
+      return NextResponse.json({
+        success: false,
+        error: "Download fallito",
+        message: "Impossibile scaricare il video. Verifica che l'URL sia corretto."
+      }, { status: 502 });
+    }
+    
+    const buffer = await videoResponse.arrayBuffer();
     const stream = Readable.from(Buffer.from(buffer));
 
     /* 4. preparo le credenziali Google Drive usando l'account di servizio */
@@ -53,11 +70,20 @@ export async function POST(req: NextRequest) {
       fields: "id",
     });
 
-    return NextResponse.json({ ok: true, fileId: upload.data.id });
+    return NextResponse.json({ 
+      success: true, 
+      fileId: upload.data.id,
+      filename: filename,
+      message: "Video salvato con successo su Google Drive!"
+    });
   } catch (err: any) {
     console.error("🔥 Errore nel salvataggio:", err);
     return NextResponse.json(
-      { error: err.message ?? "Errore interno" },
+      { 
+        success: false, 
+        error: err.message ?? "Errore interno",
+        message: "Si è verificato un errore durante il salvataggio del video. Riprova più tardi."
+      },
       { status: 500 }
     );
   }
