@@ -30,14 +30,15 @@ export async function POST(req: NextRequest) {
     const buffer = await fetch(fileUrl).then((r) => r.arrayBuffer());
     const stream = Readable.from(Buffer.from(buffer));
 
-    /* 4. preparo le credenziali Google Drive */
-    const oauth2 = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      "urn:ietf:wg:oauth:2.0:oob"
+    /* 4. preparo le credenziali Google Drive usando l'account di servizio */
+    const serviceAccountCreds = JSON.parse(
+      process.env.GOOGLE_SERVICE_ACCOUNT as string
     );
-    oauth2.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-    const drive = google.drive({ version: "v3", auth: oauth2 });
+    const auth = new google.auth.GoogleAuth({
+      credentials: serviceAccountCreds,
+      scopes: ["https://www.googleapis.com/auth/drive.file"],
+    });
+    const drive = google.drive({ version: "v3", auth });
 
     /* 5. carico il file nella cartella Reels */
     const upload = await drive.files.create({
