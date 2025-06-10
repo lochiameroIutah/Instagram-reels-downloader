@@ -43,17 +43,28 @@ Questo documento descrive come configurare Make (ex Integromat) per salvare auto
 1. Aggiungi la variabile d'ambiente `MAKE_WEBHOOK_URL` con l'URL del webhook generato da Make:
 
 ```
-MAKE_WEBHOOK_URL="https://hook.eu2.make.com/your-webhook-id"
+MAKE_WEBHOOK_URL="https://hook.eu2.make.com/3y2if7burt7vh7pf4cmk4q2awj65l8kl"
 ```
 
 2. Riavvia l'applicazione
 
 ## Test dell'integrazione
 
+### Metodo 1: Download dall'interfaccia (Automatico)
+
 1. Vai alla pagina principale dell'applicazione
 2. Incolla l'URL di un reel di Instagram
-3. Clicca su "Salva su Google Drive"
-4. Verifica che il video appaia nella cartella selezionata su Google Drive
+3. Clicca su "Download"
+4. Il video verrà scaricato sul tuo dispositivo E automaticamente inviato al webhook Make
+5. Verifica che il video appaia nella cartella selezionata su Google Drive
+
+### Metodo 2: API diretta
+
+1. Fai una richiesta POST a `/api/save` con il body:
+   ```json
+   { "url": "https://www.instagram.com/reel/YOUR_REEL_ID" }
+   ```
+2. Verifica che il video appaia nella cartella selezionata su Google Drive
 
 ## Risoluzione dei problemi
 

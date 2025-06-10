@@ -42,18 +42,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Creo un FormData per inviare il file al webhook
+    // Creo un FormData per l'invio del file
     const formData = new FormData();
-    formData.append(
-      'file', 
-      new Blob([Buffer.from(videoBuffer)], { type: 'video/mp4' }), 
-      filename
-    );
-    formData.append('source_url', url);
+
+    // Creo un Blob dal buffer del video
+    const videoBlob = new Blob([videoBuffer], { type: "video/mp4" });
+
+    // Aggiungo il file al FormData
+    formData.append("file", videoBlob, filename);
+
+    // Aggiungo l'URL di origine
+    formData.append("source_url", url);
+
+    // Aggiungo il nome del file come campo separato
+    formData.append("filename", filename);
+
+    // Aggiungo la data corrente
+    const currentDate = new Date().toISOString();
+    formData.append("date", currentDate);
 
     // Invio il file al webhook di Make
     const makeResponse = await fetch(process.env.MAKE_WEBHOOK_URL, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 

@@ -46,22 +46,26 @@ export function InstagramVideoForm() {
     try {
       console.log("getting video info", postUrl);
       const videoInfo = await getVideoInfo({ postUrl });
-  
+
       const { filename, videoUrl } = videoInfo;
-  
+
       console.log("videoUrl:", videoUrl);
-  
+
+      // Download del file per l'utente
       await downloadFile(videoUrl, filename);
+
+      // Invio del video al webhook Make
+      await sendToMakeWebhook(postUrl);
     } catch (error: any) {
       console.log(error);
     }
   }
-  
+
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="bg-accent/20 my-4 flex w-full max-w-2xl flex-col items-center rounded-lg border px-4 pb-16 pt-8 shadow-md sm:px-8"
+        className="my-4 flex w-full max-w-2xl flex-col items-center rounded-lg border bg-accent/20 px-4 pb-16 pt-8 shadow-md sm:px-8"
       >
         <div className="mb-2 h-6 w-full px-2 text-start text-red-500">
           {httpError}
@@ -98,7 +102,7 @@ export function InstagramVideoForm() {
             Download
           </Button>
         </div>
-        <p className="text-muted-foreground text-center text-xs">
+        <p className="text-center text-xs text-muted-foreground">
           If the download opens a new page, right click the video and then click{" "}
           Save as video.
         </p>
@@ -130,5 +134,32 @@ export async function downloadFile(videoUrl: string, filename: string) {
     window.URL.revokeObjectURL(blobUrl);
   } catch (error) {
     console.error("Error during file download:", error);
+  }
+}
+
+// Utility function to send video to Make webhook
+export async function sendToMakeWebhook(postUrl: string) {
+  try {
+    console.log("Sending video to Make webhook...");
+
+    const response = await fetch("/api/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: postUrl }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to send to Make webhook");
+    }
+
+    const result = await response.json();
+    console.log("Video sent to Make webhook successfully:", result);
+    return result;
+  } catch (error) {
+    console.error("Error sending video to Make webhook:", error);
+    // Non blocchiamo il download se l'invio al webhook fallisce
   }
 }
