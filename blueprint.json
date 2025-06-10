@@ -1,0 +1,57 @@
+{
+  "name": "Instagram Reels to Google Drive",
+  "description": "Salva automaticamente i video di Instagram su Google Drive",
+  "blueprint_tags": ["instagram", "google drive", "video", "automation"],
+  "blueprint_symbol": "📱➡️☁️",
+  "modules": [
+    {
+      "module_id": "webhook-custom",
+      "module_name": "Webhook",
+      "module_type": "trigger",
+      "module_options": {
+        "url": "",
+        "method": "POST",
+        "parse": true
+      },
+      "module_position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "module_id": "google-drive-upload",
+      "module_name": "Google Drive",
+      "module_type": "action",
+      "module_options": {
+        "drive": "My Drive",
+        "parentId": "",
+        "name": "{{1.file.name}}",
+        "content": "{{1.file}}",
+        "mimeType": "video/mp4",
+        "description": "Video scaricato da Instagram - {{1.source_url}}"
+      },
+      "module_position": {
+        "x": 300,
+        "y": 0
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": {
+        "module_id": "webhook-custom",
+        "port_id": "output"
+      },
+      "to": {
+        "module_id": "google-drive-upload",
+        "port_id": "input"
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario_type": "sync",
+    "scenario_status": "active"
+  }
+}

@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { google } from "googleapis";
-import { Readable } from "stream";
 
 export const dynamic = "force-dynamic"; // evita il caching su Vercel
 
 export async function POST(req: NextRequest) {
   try {
-    /* 1. estraggo l’URL dal body */
+    /* 1. estraggo l'URL dal body */
     const { url } = await req.json();
     if (!url) {
       return NextResponse.json({ error: "URL mancante" }, { status: 400 });
@@ -26,34 +24,50 @@ export async function POST(req: NextRequest) {
     const fileUrl = meta.data.videoUrl as string;
     const filename = meta.data.filename ?? `reel_${Date.now()}.mp4`;
 
-    /* 3. scarico il video in un Buffer e lo trasformo in stream */
-    const buffer = await fetch(fileUrl).then((r) => r.arrayBuffer());
-    const stream = Readable.from(Buffer.from(buffer));
+    /* 3. scarico il video in un Buffer */
+    const videoResponse = await fetch(fileUrl);
+    if (!videoResponse.ok) {
+      return NextResponse.json(
+        { error: "Impossibile scaricare il video" },
+        { status: 502 }
+      );
+    }
+    const videoBuffer = await videoResponse.arrayBuffer();
 
-    /* 4. preparo le credenziali Google Drive usando l'account di servizio */
-    const serviceAccountCreds = JSON.parse(
-      process.env.GOOGLE_SERVICE_ACCOUNT as string
+    /* 4. invio il video al webhook di Make */
+    if (!process.env.MAKE_WEBHOOK_URL) {
+      return NextResponse.json(
+        { error: "MAKE_WEBHOOK_URL non configurato" },
+        { status: 500 }
+      );
+    }
+
+    // Creo un FormData per inviare il file al webhook
+    const formData = new FormData();
+    formData.append(
+      'file', 
+      new Blob([Buffer.from(videoBuffer)], { type: 'video/mp4' }), 
+      filename
     );
-    const auth = new google.auth.GoogleAuth({
-      credentials: serviceAccountCreds,
-      scopes: ["https://www.googleapis.com/auth/drive.file"],
-    });
-    const drive = google.drive({ version: "v3", auth });
+    formData.append('source_url', url);
 
-    /* 5. carico il file nella cartella Reels */
-    const upload = await drive.files.create({
-      requestBody: {
-        name: filename,
-        parents: [process.env.GOOGLE_FOLDER_ID as string],
-      },
-      media: {
-        mimeType: "video/mp4",
-        body: stream as any, // lo stream possiede .pipe()
-      },
-      fields: "id",
+    // Invio il file al webhook di Make
+    const makeResponse = await fetch(process.env.MAKE_WEBHOOK_URL, {
+      method: 'POST',
+      body: formData,
     });
 
-    return NextResponse.json({ ok: true, fileId: upload.data.id });
+    if (!makeResponse.ok) {
+      const errorText = await makeResponse.text();
+      console.error("🔥 Errore nell'invio a Make:", errorText);
+      return NextResponse.json(
+        { error: "Errore nell'invio a Make" },
+        { status: 502 }
+      );
+    }
+
+    const makeResult = await makeResponse.json();
+    return NextResponse.json({ ok: true, result: makeResult });
   } catch (err: any) {
     console.error("🔥 Errore nel salvataggio:", err);
     return NextResponse.json(
